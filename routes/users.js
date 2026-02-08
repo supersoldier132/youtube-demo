@@ -1,19 +1,25 @@
-const express = require('express')
-const router = express.Router()
-const conn = require('../mariadb')
-const { body, param, validationResult } = require('express-validator')
+const express = require('express');
+const router = express.Router();
+const conn = require('../mariadb');
+const { body, param, validationResult } = require('express-validator');
 
-router.use(express.json())
+//jwt 모듈
+const jwt = require('jsonwebtoken');
+
+//dotenv 모듈
+const dotenv = require('dotenv').config();
+
+router.use(express.json());
 
 const validate = (req, res, next) => {
-    const err = validationResult(req)
+    const err = validationResult(req);
 
     if (err.isEmpty()) {
         return next();
     } else {
-        return res.status(400).json(err.array())
+        return res.status(400).json(err.array());
     }
-}
+};
 
 //로그인
 router.post(
@@ -39,11 +45,24 @@ router.post(
                 var loginUser = results[0]
 
                 if (loginUser && loginUser.password == password) {
+                    //token 발급
+                    const token = jwt.sign({
+                        email: loginUser.email,
+                        name: loginUser.name,
+                    }, process.env.PRIVATE_KEY, {
+                        expiresIn: '5m',
+                        issuer: 'songa'
+                    });
+
+                    res.cookie("token", token, {
+                        httpOnly: true
+                    });
+
                     res.status(200).json({
-                        message: `${loginUser.name}님 로그인 되었습니다.`
+                        message: `${loginUser.name}님 로그인 되었습니다.`,
                     })
                 } else {
-                    res.status(404).json({
+                    res.status(403).json({
                         message: "이메일 또는 비밀번호가 틀렸습니다."
                     })
                 }
